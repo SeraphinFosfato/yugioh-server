@@ -9,6 +9,10 @@ import numpy as np
 import cv2
 import base64
 import os
+
+# Silenzia warning TensorFlow
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 from tensorflow import keras
 
 app = Flask(__name__)
