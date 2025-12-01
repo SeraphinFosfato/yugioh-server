@@ -19,7 +19,7 @@ app = Flask(__name__)
 
 # Variabili globali per modello e mappatura classi
 MODEL = None
-CLASS_MAPPING = None  # dict: int -> label_originale
+CLASS_MAPPING = {i: f"mock_card_{i}" for i in range(10)}  # Default mock
 
 def load_model_and_mapping():
     """Carica modello e class_indices al primo avvio"""
@@ -43,7 +43,9 @@ def load_model_and_mapping():
     
     # Modalità MOCK per testing
     print("⚠️ Modello non trovato - Modalità MOCK attiva")
-    CLASS_MAPPING = {i: f"mock_card_{i}" for i in range(10)}
+
+# Carica modello all'import (funziona con gunicorn)
+load_model_and_mapping()
 
 
 def preprocess_image(image_bytes, target_size=(813, 1185)):
@@ -179,9 +181,6 @@ def predict():
 
 
 if __name__ == "__main__":
-    # Carica modello all'avvio
-    load_model_and_mapping()
-    
-    # Avvia server
+    # Avvia server (modello già caricato all'import)
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
