@@ -28,6 +28,12 @@ def load_model_and_mapping():
     model_path = os.getenv("MODEL_PATH", "models/trained_model.h5")
     indices_path = "models/class_indices.json"
     
+    print(f"DEBUG: Cercando modello in: {os.path.abspath(model_path)}")
+    print(f"DEBUG: File esiste? {os.path.exists(model_path)}")
+    print(f"DEBUG: Indici esiste? {os.path.exists(indices_path)}")
+    print(f"DEBUG: Working dir: {os.getcwd()}")
+    print(f"DEBUG: Files in models/: {os.listdir('models') if os.path.exists('models') else 'models/ not found'}")
+    
     # Prova a caricare il modello
     if os.path.exists(model_path) and os.path.exists(indices_path):
         try:
@@ -84,7 +90,8 @@ def home():
     return jsonify({
         "status": "online",
         "service": "yugioh-card-classifier",
-        "model_loaded": MODEL is not None
+        "model_loaded": MODEL is not None,
+        "mode": "real" if MODEL is not None else "mock"
     })
 
 
