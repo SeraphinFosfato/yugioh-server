@@ -53,26 +53,29 @@ def preprocess_image(image_bytes, target_size=(813, 1185)):
     Preprocessa immagine da bytes -> array normalizzato
     Stesso preprocessing di data_preprocessing.py
     """
-    # Decodifica bytes -> numpy array
-    nparr = np.frombuffer(image_bytes, np.uint8)
-    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    
-    if img is None:
-        raise ValueError("Impossibile decodificare immagine")
-    
-    # BGR -> RGB
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    
-    # Resize alla dimensione del modello
-    img = cv2.resize(img, target_size, interpolation=cv2.INTER_AREA)
-    
-    # Normalizza 0-1 float32
-    img = img.astype(np.float32) / 255.0
-    
-    # Aggiungi batch dimension
-    img = np.expand_dims(img, axis=0)
-    
-    return img
+    try:
+        # Decodifica bytes -> numpy array
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            raise ValueError("cv2.imdecode returned None")
+        
+        # BGR -> RGB
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        
+        # Resize alla dimensione del modello
+        img = cv2.resize(img, target_size, interpolation=cv2.INTER_AREA)
+        
+        # Normalizza 0-1 float32
+        img = img.astype(np.float32) / 255.0
+        
+        # Aggiungi batch dimension
+        img = np.expand_dims(img, axis=0)
+        
+        return img
+    except Exception as e:
+        raise ValueError(f"Errore preprocessing: {str(e)}")
 
 
 @app.route("/", methods=["GET"])
@@ -117,6 +120,9 @@ def predict():
         
         # Decodifica base64
         image_b64 = data["image"]
+        # Rimuovi eventuali prefissi data URI
+        if ',' in image_b64:
+            image_b64 = image_b64.split(',')[1]
         image_bytes = base64.b64decode(image_b64)
         
         # Preprocessa immagine
