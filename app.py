@@ -168,9 +168,13 @@ def predict():
         })
     
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"ERROR: {error_trace}")
         return jsonify({
             "error": str(e),
-            "status": "prediction_failed"
+            "status": "prediction_failed",
+            "trace": error_trace
         }), 500
 
 
