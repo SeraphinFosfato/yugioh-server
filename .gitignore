@@ -9,7 +9,5 @@ __pycache__/
 .env
 .venv
 venv/
-models/*.h5
-models/*.json
 *.log
 .DS_Store
