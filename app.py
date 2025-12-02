@@ -48,7 +48,7 @@ def load_model_and_mapping():
 load_model_and_mapping()
 
 
-def preprocess_image(image_bytes, target_size=(224, 320)):
+def preprocess_image(image_bytes, target_size=(813, 1185)):
     """
     Preprocessa immagine da bytes -> array normalizzato
     Stesso preprocessing di data_preprocessing.py
