@@ -227,10 +227,15 @@ def predict():
 def get_history(user_id):
     """Recupera lo storico scansioni di un utente"""
     try:
+        print(f"[DEBUG] Richiesta history per user_id: {user_id}")
+        print(f"[DEBUG] MongoDB URI configurato: {MONGO_URI[:20]}...")
+        
         scans = list(scans_collection.find(
             {"user_id": user_id},
             {"_id": 0}
         ).sort("timestamp", -1).limit(20))
+        
+        print(f"[DEBUG] Trovate {len(scans)} scansioni")
         
         # Converti datetime in string
         for scan in scans:
@@ -238,6 +243,7 @@ def get_history(user_id):
         
         return jsonify({"scans": scans, "count": len(scans)})
     except Exception as e:
+        print(f"[ERROR] Errore get_history: {e}")
         return jsonify({"error": str(e)}), 500
 
 
