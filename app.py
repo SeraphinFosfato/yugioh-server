@@ -36,14 +36,14 @@ def load_model_and_mapping():
             MODEL.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
             
             # Dummy prediction per inizializzare metriche
-            dummy_input = np.zeros((1, 1185, 813, 3), dtype=np.float32)
+            dummy_input = np.zeros((1, 224, 224, 3), dtype=np.float32)
             _ = MODEL.predict(dummy_input, verbose=0)
             
             with open(indices_path, "r") as f:
                 label_to_int = json.load(f)
             CLASS_MAPPING = {v: k for k, v in label_to_int.items()}
             print(f"✅ Modello caricato da {model_path}")
-            print(f"✅ Input shape atteso: (1185, 813, 3)")
+            print(f"✅ Input shape atteso: (224, 224, 3)")
             print(f"✅ Numero classi: {len(CLASS_MAPPING)}")
             return
         except Exception as e:
@@ -56,10 +56,10 @@ def load_model_and_mapping():
 load_model_and_mapping()
 
 
-def preprocess_image(image_bytes, target_size=(813, 1185)):
+def preprocess_image(image_bytes, target_size=(224, 224)):
     """
-    Preprocessa immagine da bytes -> array normalizzato
-    IMPORTANTE: target_size è (width, height) ma il modello vuole (height, width, channels)
+    Preprocessa immagine da bytes -> array normalizzato per classificazione tipo carta
+    target_size è (width, height) ma il modello vuole (height, width, channels)
     """
     try:
         # Decodifica bytes -> numpy array
@@ -73,16 +73,13 @@ def preprocess_image(image_bytes, target_size=(813, 1185)):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         
         # Resize: cv2.resize vuole (width, height)
-        # target_size = (813, 1185) = (width, height)
         img = cv2.resize(img, target_size, interpolation=cv2.INTER_AREA)
-        
-        # Ora img.shape = (1185, 813, 3) = (height, width, channels) ✅
         print(f"[DEBUG] Image shape dopo resize: {img.shape}")
         
         # Normalizza 0-1 float32
         img = img.astype(np.float32) / 255.0
         
-        # Aggiungi batch dimension -> (1, 1185, 813, 3)
+        # Aggiungi batch dimension
         img = np.expand_dims(img, axis=0)
         
         return img
@@ -113,12 +110,12 @@ def predict():
     
     Output JSON:
     {
-        "prediction": "card_id",
+        "prediction": "Monster/Spell/Trap",
         "confidence": 0.95,
-        "top_5": [
-            {"label": "card_id_1", "confidence": 0.95},
-            {"label": "card_id_2", "confidence": 0.03},
-            ...
+        "top_3": [
+            {"label": "Monster", "confidence": 0.95},
+            {"label": "Spell", "confidence": 0.03},
+            {"label": "Trap", "confidence": 0.02}
         ]
     }
     """
@@ -148,19 +145,19 @@ def predict():
             top_confidence = float(mock_predictions[top_idx])
             top_label = CLASS_MAPPING.get(top_idx, f"mock_card_{top_idx}")
             
-            top_5_indices = np.argsort(mock_predictions)[-5:][::-1]
-            top_5 = [
+            top_3_indices = np.argsort(mock_predictions)[-3:][::-1]
+            top_3 = [
                 {
                     "label": CLASS_MAPPING.get(int(idx), f"mock_card_{idx}"),
                     "confidence": float(mock_predictions[idx])
                 }
-                for idx in top_5_indices
+                for idx in top_3_indices
             ]
             
             return jsonify({
                 "prediction": top_label,
                 "confidence": top_confidence,
-                "top_5": top_5,
+                "top_3": top_3,
                 "mock": True
             })
         
@@ -172,20 +169,20 @@ def predict():
         top_confidence = float(predictions[top_idx])
         top_label = CLASS_MAPPING.get(top_idx, f"class_{top_idx}")
         
-        # Top-5 predictions
-        top_5_indices = np.argsort(predictions)[-5:][::-1]
-        top_5 = [
+        # Top-3 predictions (solo 3 tipi: Monster/Spell/Trap)
+        top_3_indices = np.argsort(predictions)[-3:][::-1]
+        top_3 = [
             {
                 "label": CLASS_MAPPING.get(int(idx), f"class_{idx}"),
                 "confidence": float(predictions[idx])
             }
-            for idx in top_5_indices
+            for idx in top_3_indices
         ]
         
         return jsonify({
             "prediction": top_label,
             "confidence": top_confidence,
-            "top_5": top_5
+            "top_3": top_3
         })
     
     except Exception as e:
