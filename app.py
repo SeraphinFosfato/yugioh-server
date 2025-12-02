@@ -32,11 +32,19 @@ def load_model_and_mapping():
     if os.path.exists(model_path) and os.path.exists(indices_path):
         try:
             import json
-            MODEL = keras.models.load_model(model_path)
+            MODEL = keras.models.load_model(model_path, compile=False)
+            MODEL.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+            
+            # Dummy prediction per inizializzare metriche
+            dummy_input = np.zeros((1, 1185, 813, 3), dtype=np.float32)
+            _ = MODEL.predict(dummy_input, verbose=0)
+            
             with open(indices_path, "r") as f:
                 label_to_int = json.load(f)
             CLASS_MAPPING = {v: k for k, v in label_to_int.items()}
             print(f"✅ Modello caricato da {model_path}")
+            print(f"✅ Input shape atteso: (1185, 813, 3)")
+            print(f"✅ Numero classi: {len(CLASS_MAPPING)}")
             return
         except Exception as e:
             print(f"⚠️ Errore caricamento modello: {e}")
@@ -51,8 +59,7 @@ load_model_and_mapping()
 def preprocess_image(image_bytes, target_size=(813, 1185)):
     """
     Preprocessa immagine da bytes -> array normalizzato
-    Stesso preprocessing di data_preprocessing.py
-    IMPORTANTE: target_size deve corrispondere a image_size del training
+    IMPORTANTE: target_size è (width, height) ma il modello vuole (height, width, channels)
     """
     try:
         # Decodifica bytes -> numpy array
@@ -65,13 +72,17 @@ def preprocess_image(image_bytes, target_size=(813, 1185)):
         # BGR -> RGB
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         
-        # Resize alla dimensione del modello
+        # Resize: cv2.resize vuole (width, height)
+        # target_size = (813, 1185) = (width, height)
         img = cv2.resize(img, target_size, interpolation=cv2.INTER_AREA)
+        
+        # Ora img.shape = (1185, 813, 3) = (height, width, channels) ✅
+        print(f"[DEBUG] Image shape dopo resize: {img.shape}")
         
         # Normalizza 0-1 float32
         img = img.astype(np.float32) / 255.0
         
-        # Aggiungi batch dimension
+        # Aggiungi batch dimension -> (1, 1185, 813, 3)
         img = np.expand_dims(img, axis=0)
         
         return img
