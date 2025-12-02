@@ -14,6 +14,7 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 from tensorflow import keras
+from huggingface_hub import hf_hub_download
 
 app = Flask(__name__)
 
@@ -22,35 +23,39 @@ MODEL = None
 CLASS_MAPPING = {i: f"mock_card_{i}" for i in range(10)}  # Default mock
 
 def load_model_and_mapping():
-    """Carica modello e class_indices al primo avvio"""
+    """Carica modello e class_indices da Hugging Face"""
     global MODEL, CLASS_MAPPING
     
-    model_path = os.getenv("MODEL_PATH", "models/trained_model.h5")
-    indices_path = "models/class_indices.json"
-    
-    # Prova a caricare il modello
-    if os.path.exists(model_path) and os.path.exists(indices_path):
-        try:
-            import json
-            MODEL = keras.models.load_model(model_path, compile=False)
-            MODEL.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-            
-            # Dummy prediction per inizializzare metriche
-            dummy_input = np.zeros((1, 224, 224, 3), dtype=np.float32)
-            _ = MODEL.predict(dummy_input, verbose=0)
-            
-            with open(indices_path, "r") as f:
-                label_to_int = json.load(f)
-            CLASS_MAPPING = {v: k for k, v in label_to_int.items()}
-            print(f"✅ Modello caricato da {model_path}")
-            print(f"✅ Input shape atteso: (224, 224, 3)")
-            print(f"✅ Numero classi: {len(CLASS_MAPPING)}")
-            return
-        except Exception as e:
-            print(f"⚠️ Errore caricamento modello: {e}")
-    
-    # Modalità MOCK per testing
-    print("⚠️ Modello non trovato - Modalità MOCK attiva")
+    try:
+        import json
+        
+        # Download da Hugging Face
+        repo_id = "SeraphinFosfato/yugioh-card-type-classifier"
+        print(f"📥 Download modello da Hugging Face: {repo_id}")
+        
+        model_path = hf_hub_download(repo_id=repo_id, filename="trained_model.h5")
+        indices_path = hf_hub_download(repo_id=repo_id, filename="class_indices.json")
+        
+        MODEL = keras.models.load_model(model_path, compile=False)
+        MODEL.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+        
+        # Dummy prediction per inizializzare metriche
+        dummy_input = np.zeros((1, 224, 224, 3), dtype=np.float32)
+        _ = MODEL.predict(dummy_input, verbose=0)
+        
+        with open(indices_path, "r") as f:
+            label_to_int = json.load(f)
+        CLASS_MAPPING = {v: k for k, v in label_to_int.items()}
+        
+        print(f"✅ Modello caricato da Hugging Face")
+        print(f"✅ Input shape atteso: (224, 224, 3)")
+        print(f"✅ Numero classi: {len(CLASS_MAPPING)}")
+        print(f"✅ Classi: {list(CLASS_MAPPING.values())}")
+        
+    except Exception as e:
+        print(f"⚠️ Errore caricamento modello da Hugging Face: {e}")
+        print("⚠️ Modalità MOCK attiva")
+        CLASS_MAPPING = {0: "Monster", 1: "Spell", 2: "Trap"}
 
 # Carica modello all'import (funziona con gunicorn)
 load_model_and_mapping()
