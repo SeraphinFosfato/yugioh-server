@@ -9,6 +9,8 @@ import numpy as np
 import cv2
 import base64
 import os
+from datetime import datetime
+from pymongo import MongoClient
 
 # Silenzia warning TensorFlow
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -21,6 +23,12 @@ app = Flask(__name__)
 # Variabili globali per modello e mappatura classi
 MODEL = None
 CLASS_MAPPING = {i: f"mock_card_{i}" for i in range(10)}  # Default mock
+
+# MongoDB setup
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+db_client = MongoClient(MONGO_URI)
+db = db_client["yugioh_bot"]
+scans_collection = db["scans"]
 
 def load_model_and_mapping():
     """Carica modello e class_indices da Hugging Face"""
@@ -189,11 +197,23 @@ def predict():
             for idx in top_3_indices
         ]
         
-        return jsonify({
+        result = {
             "prediction": top_label,
             "confidence": top_confidence,
             "top_3": top_3
-        })
+        }
+        
+        # Salva nel database
+        user_id = data.get("user_id")
+        if user_id:
+            scans_collection.insert_one({
+                "user_id": user_id,
+                "timestamp": datetime.utcnow(),
+                "prediction": top_label,
+                "confidence": top_confidence
+            })
+        
+        return jsonify(result)
     
     except Exception as e:
         print(f"ERROR: {str(e)}")
@@ -201,6 +221,24 @@ def predict():
             "error": str(e),
             "status": "prediction_failed"
         }), 500
+
+
+@app.route("/history/<user_id>", methods=["GET"])
+def get_history(user_id):
+    """Recupera lo storico scansioni di un utente"""
+    try:
+        scans = list(scans_collection.find(
+            {"user_id": user_id},
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(20))
+        
+        # Converti datetime in string
+        for scan in scans:
+            scan["timestamp"] = scan["timestamp"].isoformat()
+        
+        return jsonify({"scans": scans, "count": len(scans)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
