@@ -29,12 +29,15 @@ def load_model_and_mapping():
     try:
         import json
         
-        # Download da Hugging Face
+        # Download da Hugging Face (force_download per evitare cache)
         repo_id = "SeraphinFosfato/yugioh-card-type-classifier"
         print(f"📥 Download modello da Hugging Face: {repo_id}")
         
-        model_path = hf_hub_download(repo_id=repo_id, filename="trained_model.h5")
-        indices_path = hf_hub_download(repo_id=repo_id, filename="class_indices.json")
+        model_path = hf_hub_download(repo_id=repo_id, filename="trained_model.h5", force_download=True)
+        indices_path = hf_hub_download(repo_id=repo_id, filename="class_indices.json", force_download=True)
+        
+        print(f"📁 Model path: {model_path}")
+        print(f"📁 Indices path: {indices_path}")
         
         MODEL = keras.models.load_model(model_path, compile=False)
         MODEL.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
@@ -97,9 +100,11 @@ def home():
     """Health check endpoint"""
     return jsonify({
         "status": "online",
-        "service": "yugioh-card-classifier",
+        "service": "yugioh-card-type-classifier",
         "model_loaded": MODEL is not None,
-        "mode": "real" if MODEL is not None else "mock"
+        "mode": "real" if MODEL is not None else "mock",
+        "classes": list(CLASS_MAPPING.values()) if CLASS_MAPPING else [],
+        "num_classes": len(CLASS_MAPPING)
     })
 
 
